@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -40,7 +39,7 @@ func main() {
 type Credentials struct {
 	Username string
 	Password string
-	BaseUrl  string
+	BaseURL  string
 	DryRun   bool
 }
 
@@ -48,18 +47,18 @@ func DefaultCredentials() Credentials {
 	return Credentials{
 		Username: username,
 		Password: password,
-		BaseUrl:  baseurl,
+		BaseURL:  baseurl,
 		DryRun:   dryrun,
 	}
 }
 
 type Subscription struct {
-	Id      int       `json:"id,omitempty"`
+	ID      int       `json:"id,omitempty"`
 	Created time.Time `json:"created_at,omitempty"`
-	FeedId  int       `json:"feed_id,omitempty"`
+	FeedID  int       `json:"feed_id,omitempty"`
 	Title   string    `json:"title,omitempty"`
-	FeedUrl string    `json:"feed_url,omitempty"`
-	SiteUrl string    `json:"site_url,omitempty"`
+	FeedURL string    `json:"feed_url,omitempty"`
+	SiteURL string    `json:"site_url,omitempty"`
 }
 
 type Subscriptions []Subscription
@@ -71,40 +70,40 @@ func RemoveBrokenSubscriptions(cred Credentials, log io.Writer) error {
 	}
 
 	for _, sub := range subscriptions {
-		resp, err := http.Get(sub.FeedUrl)
+		resp, err := http.Get(sub.FeedURL)
 		if err != nil {
-			fmt.Fprintf(log, "Could not GET %q; Error: %v - REMOVING\n", sub.FeedUrl, err)
+			fmt.Fprintf(log, "Could not GET %q; Error: %v - REMOVING\n", sub.FeedURL, err)
 			err = RemoveSubscription(cred, sub)
 			if err != nil {
-				fmt.Fprintf(log, "Failed to REMOVE %q; Error: %v\n", sub.FeedUrl, err)
+				fmt.Fprintf(log, "Failed to REMOVE %q; Error: %v\n", sub.FeedURL, err)
 			}
 			continue
 		}
 		if resp == nil {
-			fmt.Fprintf(log, " Error: %q returned nil response\n", sub.FeedUrl)
+			fmt.Fprintf(log, " Error: %q returned nil response\n", sub.FeedURL)
 			continue
 		}
 		switch resp.StatusCode {
 		case http.StatusNotFound, http.StatusNotAcceptable, http.StatusForbidden, http.StatusUnauthorized:
-			fmt.Fprintf(log, "Could not GET %q; Response: %s\n", sub.FeedUrl, resp.Status)
+			fmt.Fprintf(log, "Could not GET %q; Response: %s\n", sub.FeedURL, resp.Status)
 			err = RemoveSubscription(cred, sub)
 			if err != nil {
-				fmt.Fprintf(log, "Failed to REMOVE %q; Error: %v\n", sub.FeedUrl, err)
+				fmt.Fprintf(log, "Failed to REMOVE %q; Error: %v\n", sub.FeedURL, err)
 			}
 		case http.StatusOK, http.StatusAccepted, http.StatusPartialContent:
 		default:
-			fmt.Fprintf(log, " Warning: %q returned %d\n", sub.FeedUrl, resp.StatusCode)
+			fmt.Fprintf(log, " Warning: %q returned %d\n", sub.FeedURL, resp.StatusCode)
 		}
 	}
 	return nil
 }
 
 func GetSubscriptions(cred Credentials) (Subscriptions, error) {
-	getUrl, err := url.Parse(fmt.Sprintf("%s/subscriptions.json", cred.BaseUrl))
+	getURL, err := url.Parse(fmt.Sprintf("%s/subscriptions.json", cred.BaseURL))
 	if err != nil {
 		return Subscriptions{}, err
 	}
-	req, err := http.NewRequest("GET", getUrl.String(), nil)
+	req, err := http.NewRequest("GET", getURL.String(), nil)
 	if err != nil {
 		return Subscriptions{}, err
 	}
@@ -123,7 +122,7 @@ func GetSubscriptions(cred Credentials) (Subscriptions, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return Subscriptions{}, errors.New(fmt.Sprintf("Error: %s\n%s", resp.Status, data))
+		return Subscriptions{}, fmt.Errorf("Error: %s\n%s", resp.Status, data)
 	}
 
 	var s Subscriptions
@@ -140,11 +139,11 @@ func RemoveSubscription(cred Credentials, sub Subscription) error {
 		return nil
 	}
 
-	delUrl, err := url.Parse(fmt.Sprintf("%s/subscriptions/%d.json", cred.BaseUrl, sub.Id))
+	delURL, err := url.Parse(fmt.Sprintf("%s/subscriptions/%d.json", cred.BaseURL, sub.ID))
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("DELETE", delUrl.String(), nil)
+	req, err := http.NewRequest("DELETE", delURL.String(), nil)
 	if err != nil {
 		return err
 	}
@@ -163,7 +162,7 @@ func RemoveSubscription(cred Credentials, sub Subscription) error {
 	}
 
 	if resp.StatusCode != http.StatusNoContent {
-		return errors.New(fmt.Sprintf("Error: %s\n%s", resp.Status, body))
+		return fmt.Errorf("Error: %s\n%s", resp.Status, body)
 	}
 	return nil
 }
